@@ -15,4 +15,4 @@ jobs:
 
       - name: Deploy files to S3
         run: |
-          aws s3 sync . s3://your-bucket-name --delete
+          aws s3 sync . s3://gl-aryan-cloudformation-code-bucket --delete
