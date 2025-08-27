@@ -1,0 +1,49 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+
+# Metadata:
+#   template metadata
+
+# Parameters:
+#   set of parameters
+
+
+Resources:
+  
+  AryanASGLaunchTemplate:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+     ImageId : ami-02d26659fd82cf299
+     InstanceType: t2.micro
+     LaunchConfigurationName: ASG-LaunchConfiguration
+     UserData:
+      Fn:Base64: 
+        !Sub |
+          sudo apt update
+          sudo apt install nginx
+
+  AryanASG:
+    Type:  AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AutoScalingGroupName: my-ASG 
+      AvailabilityZone: 
+          - ap-south-1a
+          - ap-south-1b
+      DesiredCapacity: 2
+      LaunchConfigurationName : !Ref AryanASGLaunchTemplate
+      MaxSize: 2
+      MinSize: 1
+      VPCZoneIdentifier:
+          -  subnet-0eb9abe0b59e8a725
+          -  subnet-0be5793cd4c4f910c
+
+  AryanTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties: 
+      Name: ALB-TargetGroup
+      TargetType: instance
+      IpAddressType:  ipv4
+      ProtocolVersion: HTTP1
+      HealthCheckPort: 80
+      HealthCheckPath : /
+

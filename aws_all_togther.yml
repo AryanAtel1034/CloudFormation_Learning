@@ -1,0 +1,72 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+Description: ALL In ONE
+
+# Metadata:
+#    
+
+Parameters:
+  CidrParameter:
+    Type: String
+    Default: 10.0.0.0/16
+
+  PublicSubnetCIDR:
+    Type: String
+    Default:  10.0.1.0/24
+
+  InstanceParameter:
+    Type: String
+    AllowedValues: 
+       - t2.medium
+       - t2.large
+       - t2.micro
+    Default: t2.micro
+  
+  ImageParameter:
+    Type: String
+    Default: ami-02d26659fd82cf299
+    AllowedValues:
+      - ami-02d26659fd82cf299
+      - ami-0ed981b8451912647
+
+  
+  BucketParamteter:
+    Type: String
+
+
+Resources:
+
+    AryanVPC:
+      Type: AWS::EC2::VPC
+      Properties:
+        CidrBlock: !Ref CidrParameter
+        Tags:
+          - Key: Name
+            Value: my-vpc
+
+    AryanSubnet:
+      Type: AWS::EC2::Subnet
+      Properties:
+        VpcId: !Ref AryanVPC
+        AvailabilityZone: !Select [ 0, !GetAZs '' ]
+        CidrBlock: !Ref PublicSubnetCIDR
+        Tags:
+          - Key: Name
+            Value: PublicSubnet
+
+    AryanEc2:
+      Type: AWS::EC2::Instance
+      Properties:
+        ImageId: !Ref ImageParameter
+        InstanceType: !Ref InstanceParameter
+        KeyName: office-key
+        SubnetId: !Ref AryanSubnet
+        Tags:
+          - Key: Name
+            Value: CF-ec2
+
+    AryanS3:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: !Ref BucketParamteter
+    

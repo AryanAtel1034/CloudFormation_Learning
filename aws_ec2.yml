@@ -1,0 +1,47 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Cloudformation tutorial ec2 instance
+
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroup:
+      - 
+        Label:
+          Default: "Compute Confuguration"
+        Parameters:
+          - InstanceParameters
+
+      - Label:
+          Default: "Bucket Condiguration"
+        Parameters: 
+          - BucketParamteters
+
+Parameters:
+  InstanceParameters:
+    Type: String
+    AllowedValues: 
+       - t2.medium
+       - t2.large
+       - t2.micro
+    Default: t2.micro
+  
+  BucketParamteters:
+    Type: String
+
+    
+
+Resources:
+  AryanEc2:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-02d26659fd82cf299
+      InstanceType: !Ref InstanceParameters
+      KeyName: office-key
+      Tags:
+        - Key: dev
+          Value: dev
+  
+  AryanS3dev:
+        Type: AWS::S3::Bucket
+        Properties: 
+            BucketName: !Ref BucketParamteters

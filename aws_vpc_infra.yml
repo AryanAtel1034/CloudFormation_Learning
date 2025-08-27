@@ -1,0 +1,169 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+
+# Metadata:
+#   template metadata
+
+# Parameters:
+#   set of parameters
+
+Resources:
+    AryanVpc:
+      Type: AWS::EC2::VPC
+      Properties:
+        CidrBlock: 10.0.0.0/16
+        Tags:
+          - Key: Name
+            Value: My-VPC
+
+    AryanPublicSubnet:
+      Type: AWS::EC2::Subnet
+      Properties:
+        VpcId: !Ref AryanVpc
+        AvailabilityZone: ap-south-1a
+        CidrBlock:  10.0.0.0/24
+        Tags:
+          - Key: Name
+            Value: PublicSubnet
+            
+    AryanPrivateSubnet:
+      Type: AWS::EC2::Subnet
+      Properties:
+        VpcId: !Ref AryanVpc
+        AvailabilityZone: ap-south-1a
+        CidrBlock:  10.0.3.0/24
+        Tags:
+          - Key: Name
+            Value: PrivateSubnet
+
+    AryanIGW:
+      Type:  AWS::EC2::InternetGateway
+      Properties:
+        Tags:
+          - Key: Name
+            Value: my-IGW
+    AttachIGW:
+      Type: AWS::EC2::VPCGatewayAttachment
+      Properties:
+         InternetGatewayId: !Ref AryanIGW
+         VpcId: !Ref AryanVpc
+
+
+    AryanPublicRouteTable:    
+      Type: AWS::EC2::RouteTable
+      Properties:
+        VpcId: !Ref AryanVpc
+        Tags:
+          - Key : Name
+            Value : AryanPublicRouteTable
+
+    PublicRouteTabelSubnetAssociation:
+      Type: AWS::EC2::SubnetRouteTableAssociation
+      Properties:
+          RouteTableId: !Ref AryanPublicRouteTable
+          SubnetId: !Ref AryanPublicSubnet
+      
+    AryanPrivateRouteTable:    
+      Type: AWS::EC2::RouteTable
+      Properties:
+        VpcId: !Ref AryanVpc
+        Tags:
+          - Key : Name
+            Value : AryanPrivateRouteTable
+
+    PrivateRouteTabelSubnetAssociation:
+      Type: AWS::EC2::SubnetRouteTableAssociation
+      Properties:
+          RouteTableId: !Ref AryanPrivateRouteTable
+          SubnetId: !Ref AryanPrivateSubnet
+
+    AryanEIP:
+      Type: AWS::EC2::EIP    
+      Properties:
+        Tags:
+          - Key: Name
+            Value: my-EIP
+
+    AryanNATGateway:
+      Type: AWS::EC2::NatGateway
+      DependsOn: AryanEIP
+      Properties:
+        AllocationId: !GetAtt AryanEIP.AllocationId
+        SubnetId: !Ref AryanPublicSubnet
+        Tags:
+          - Key: Name
+            Value: my-Nat
+      
+    MyInternetGatewayRoute:
+      Type: AWS::EC2::Route
+      Properties:
+          RouteTableId: !Ref AryanPublicRouteTable
+          DestinationCidrBlock: 0.0.0.0/0
+          GatewayId: !Ref AryanIGW
+
+    MyNATGatewayRoute:
+      Type: AWS::EC2::Route
+      Properties:
+          RouteTableId: !Ref AryanPrivateRouteTable
+          DestinationCidrBlock: 0.0.0.0/0
+          NatGatewayId: !Ref AryanNATGateway
+
+    InstanceSG:
+      Type: AWS::EC2::SecurityGroup
+      Properties: 
+        VpcId: !Ref AryanVpc   
+        GroupDescription: this is sample SG
+        SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+        SecurityGroupEgress:
+          - IpProtocol: -1 # Allows all outbound traffic
+            CidrIp: 0.0.0.0/0
+        Tags:
+          - Key: Name
+            Value: CF-SG
+
+    AryanEc2:
+      Type: AWS::EC2::Instance
+      Properties:
+        ImageId: ami-02d26659fd82cf299
+        InstanceType: t2.micro
+        NetworkInterfaces:
+        - AssociatePublicIpAddress: true   # ← Valid here
+          DeviceIndex: 0
+          SubnetId: !Ref AryanPublicSubnet
+          GroupSet:
+            -  !Ref InstanceSG
+        KeyName: office-key
+        UserData:
+          Fn::Base64: !Sub |
+                  #!/bin/bash
+                  sudo apt-get update -y
+                  sudo apt-get install ca-certificates curl -y
+                  sudo install -m 0755 -d /etc/apt/keyrings
+                  sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+                  sudo chmod a+r /etc/apt/keyrings/docker.asc
+                      echo \
+                          "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+                          $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
+                          sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+                  sudo apt-get update
+                  sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin -y
+                  sudo usermod -aG docker ubuntu
+                  docker pull aryanatel/my-app
+                  docker run -d -p 80:80 aryanatel/my-app
+        # SubnetId: !Ref AryanPublicSubnet
+        Tags:
+          - Key: Name
+            Value: CF-ec2
+
