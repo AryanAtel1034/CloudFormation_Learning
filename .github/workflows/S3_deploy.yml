@@ -3,15 +3,15 @@ name: Deploy to S3
 on:
   push:
     branches:
-      - main  # or any other branch you want to deploy from
+      - main  
 
 jobs:
   deploy:
-    runs-on: self-hosted  # your EC2 GitHub Actions runner
+    runs-on: self-hosted  
 
     steps:
       - name: Checkout the repo
-        uses: actions/checkout@v4  # Pulls your GitHub repo into the runner
+        uses: actions/checkout@v4 
 
       - name: Deploy files to S3
         run: |
