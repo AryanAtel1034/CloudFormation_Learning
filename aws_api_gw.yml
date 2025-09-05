@@ -1,40 +1,56 @@
 ---
 AWSTemplateFormatVersion: 2010-09-09
 
-# Description:
-#   String
+Description:
+ This is the template stack for the creation of APIGW and Lambda
+#--------------------Metadata Block-------------------------------
+Metadata:
+  AWS::CloudFormation::Interface:
+   ParameterGroups:
+    - 
+      Label:
+        default: "APIGW Configuration"
+      Parameters:
+        - APIGWHttpMethodTypes
+        - APIGWIntegrationType
+        - APIGWPathPart
+    - 
+      Label:
+        default: "Lambda Configuration"
+      Parameters:
+        - LambdaRuntime
 
-# Metadata:
-#   template metadata
+#------------------------Parameter Block----------------------
+Parameters:
+ APIGWHttpMethodTypes:
+  Type: String
+  Default: GET
+  AllowedValues:
+    - GET
+    - POST
+    - PUT
+ APIGWIntegrationType:
+  Type: String
+  Default: MOCK
+  AllowedValues:
+    - MOCK
+    - HTTP
+    - AWS
+ APIGWPathPart:
+  Type: String
+   
 
-# Parameters:
-#   set of parameters
-
+ LambdaRuntime:
+  Type: String
+  Default: nodejs20.x
+  AllowedValues:
+    - nodejs20.x
+    - Python 3.13
+    - .NET 8 (C#/F#/PowerShell)
+  
+#---------------------------Resource Block-------------------------
 
 Resources:
-
-  AryanApiGateway:
-    Type: AWS::ApiGateway::RestApi
-    Properties:
-      Name: Testing-API
-      Description: This is an sample APIGW
-  APIGWResource:
-    Type:  AWS::ApiGateway::Resource 
-    Properties:
-      ParentId: !GetAtt AryanApiGateway.RootResourceId
-      PathPart: Users
-      RestApiId: !Ref AryanApiGateway
-  APIGWMethod:
-    Type: AWS::ApiGateway::Method
-    Properties:
-      RestApiId: !Ref AryanApiGateway
-      ResourceId: !Ref APIGWResource
-      AuthorizationType: NONE
-      HttpMethod: GET
-      Integration: 
-        Type: MOCK
-        
-
   LambdaRole:
     Type: AWS::IAM::Role
     Properties:
@@ -57,7 +73,6 @@ Resources:
                   - logs:CreateLogStream
                   - logs:PutLogEvents
                 Resource: "arn:aws:logs:*:*:*"
-
   LambdaInvokePermission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -66,25 +81,47 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn: 
         Fn::Sub: arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${AryanApiGateway}/*/GET/hello
-    
-
   AryanLambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: CF-Lambda 
-      Runtime: nodejs20.x
+      Runtime: !Ref LambdaRuntime  #<----- Paramter Selection
       Handler: index.handler
       Role: !GetAtt LambdaRole.Arn
       Code:
         ZipFile: |
-            export const handler = async (event) => {
-            // TODO implement
+           exports.handler = async (event) => {
             const response = {
               statusCode: 200,
               body: JSON.stringify('Hello from Lambda!'),
             };
             return response;
-            };
+           };
+
+
+  AryanApiGateway:  #<------ Logical Identification ID of Resource
+    Type: AWS::ApiGateway::RestApi   #<------ Resoucre Name
+    Properties:   #<----- Properties for the API Gateway
+      Name: Testing-API
+      Description: This is an sample APIGW
+  APIGWResource:
+    Type:  AWS::ApiGateway::Resource 
+    Properties:
+      ParentId: !GetAtt AryanApiGateway.RootResourceId
+      PathPart: !Ref APIGWPathPart
+      RestApiId: !Ref AryanApiGateway
+  APIGWMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref AryanApiGateway
+      ResourceId: !Ref APIGWResource
+      AuthorizationType: NONE
+      HttpMethod: !Ref APIGWHttpMethodTypes  #<----- Paramter Selection
+      Integration:
+        Type: AWS_PROXY # For Lambda proxy integration
+        IntegrationHttpMethod: POST # Always POST for Lambda proxy integration
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${AryanLambdaFunction.Arn}/invocations 
+
 
   
       
