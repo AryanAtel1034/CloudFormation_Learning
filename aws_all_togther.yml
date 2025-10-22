@@ -70,3 +70,7 @@ Resources:
       Properties:
         BucketName: !Ref BucketParamteter
     
+      AryanS3_forDev:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: !Ref BucketParamteter
